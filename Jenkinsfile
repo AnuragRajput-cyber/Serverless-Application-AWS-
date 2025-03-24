@@ -1,15 +1,24 @@
 pipeline {
     agent any
     
+    // Add this tools section to ensure Node.js is available
+    tools {
+        nodejs 'Node16' // Must match Node.js installation name in Jenkins
+    }
+    
     environment {
         AWS_REGION = 'us-east-1' // Change to your region
         S3_BUCKET = 'mern-frontend-app'
     }
     
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/AnuragRajput-cyber/Serverless-Application-AWS-.git'
+                checkout([$class: 'GitSCM', 
+                         branches: [[name: '*/main']],
+                         extensions: [],
+                         userRemoteConfigs: [[url: 'https://github.com/AnuragRajput-cyber/Serverless-Application-AWS-.git']]
+                        ])
             }
         }
         
@@ -23,7 +32,7 @@ pipeline {
         
         stage('Build Frontend') {
             steps {
-                dir('server') {
+                dir('frontend') {  // Changed from 'server' to 'frontend'
                     sh 'npm run build'
                 }
             }
@@ -31,7 +40,7 @@ pipeline {
         
         stage('Deploy Frontend to S3') {
             steps {
-                dir('client') {
+                dir('frontend') {  // Changed from 'client' to 'frontend'
                     sh 'aws s3 sync build/ s3://${S3_BUCKET} --delete'
                 }
             }
@@ -56,11 +65,10 @@ pipeline {
     }
     
     post {
-        success {
-            slackSend(color: 'good', message: "Build Successful: ${env.JOB_NAME} ${env.BUILD_NUMBER}")
-        }
-        failure {
-            slackSend(color: 'danger', message: "Build Failed: ${env.JOB_NAME} ${env.BUILD_NUMBER}")
+        always {
+            echo 'Pipeline execution completed'
+            // Removed slackSend since it's causing errors
+            // You can add it back after installing Slack plugin
         }
     }
 }
